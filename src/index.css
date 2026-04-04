@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Georgia:ital,wght@0,400;0,700;1,400&family=Helvetica+Neue:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-mono: "SF Mono", ui-monospace, monospace;
+  
+  --color-bg: var(--bg);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-panel: var(--panel);
+}
+
+:root {
+  color-scheme: light;
+  --bg: #f5f1ea;
+  --panel: #fffdf8;
+  --ink: #201b18;
+  --muted: #6d645d;
+  --border: #d8cec3;
+  --accent: #955f3b;
+}
+
+.dark {
+  --bg: #1a1614;
+  --panel: #241e1b;
+  --ink: #f5f1ea;
+  --muted: #a3968e;
+  --border: #3d332e;
+  --accent: #d48b5b;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink font-sans antialiased transition-colors duration-500;
+    background: linear-gradient(180deg, #fbf7f0 0%, var(--bg) 100%);
+    min-height: 100vh;
+  }
+
+  .dark body {
+    background: linear-gradient(180deg, #241e1b 0%, var(--bg) 100%);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-normal;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-panel border border-border rounded-[20px] shadow-[0_18px_40px_rgba(54,40,23,0.08)] transition-all duration-150;
+  }
+  
+  .glass-panel:hover {
+    @apply shadow-[0_22px_44px_rgba(54,40,23,0.12)] -translate-y-[1px];
+  }
+
+  .dark .glass-panel {
+    @apply shadow-[0_18px_40px_rgba(0,0,0,0.3)];
+  }
+
+  .dark .glass-panel:hover {
+    @apply shadow-[0_22px_44px_rgba(0,0,0,0.4)];
+  }
+
+  .luxury-button {
+    @apply px-6 py-3 rounded-[20px] border border-border bg-panel hover:border-accent hover:text-accent transition-all duration-150 text-sm font-medium shadow-sm;
+  }
+
+  .luxury-input {
+    @apply bg-panel border border-border px-4 py-2 rounded-[20px] focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all duration-150 w-full shadow-sm;
+  }
+
+  .micro-label {
+    @apply text-[12px] leading-[1.2] font-mono tracking-[0.08em] uppercase text-accent;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted/30 rounded-full hover:bg-muted/50 transition-colors;
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Tarsus: Real-Time Communication Platform",
+  "description": "Tarsus: A branch of tarsi. A production-ready real-time chat and video calling application with AI assistance, built with React, Express, Socket.IO, and Firebase.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture",
+    "geolocation"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "email": { "type": "string", "description": "User's email address" },
+        "photoURL": { "type": "string", "description": "User's profile picture URL" },
+        "status": { "type": "string", "enum": ["online", "offline"], "description": "Current online status" },
+        "lastSeen": { "type": "string", "format": "date-time", "description": "Last time the user was active" },
+        "blockedUsers": { "type": "array", "items": { "type": "string" }, "description": "List of blocked user UIDs" },
+        "settings": { "type": "object", "properties": { "showLastSeen": { "type": "boolean" }, "showOnlineStatus": { "type": "boolean" } } }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "groups": {
+      "title": "Group",
+      "description": "Group chat information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique group ID" },
+        "name": { "type": "string", "description": "Group name" },
+        "photoURL": { "type": "string", "description": "Group photo URL" },
+        "createdBy": { "type": "string", "description": "UID of the creator" },
+        "members": { "type": "array", "items": { "type": "string" }, "description": "List of member UIDs" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the group was created" }
+      },
+      "required": ["id", "name", "createdBy", "members"]
+    },
+    "messages": {
+      "title": "Message",
+      "description": "Chat message between users or in a group",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique message ID" },
+        "senderId": { "type": "string", "description": "UID of the sender" },
+        "receiverId": { "type": "string", "description": "UID of the receiver or Group ID" },
+        "text": { "type": "string", "description": "Content of the message" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent" },
+        "read": { "type": "boolean", "description": "Whether the message has been read" },
+        "voiceUrl": { "type": "string", "description": "URL of the voice message" },
+        "isDeleted": { "type": "boolean", "description": "Whether the message was deleted for everyone" },
+        "isGroup": { "type": "boolean", "description": "Whether the message is in a group" }
+      },
+      "required": ["senderId", "receiverId", "text", "timestamp"]
+    },
+    "statuses": {
+      "title": "Status",
+      "description": "Ephemeral status update (photo, video, text, or voice)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "UID of the creator" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "photoURL": { "type": "string", "description": "User's profile picture URL" },
+        "type": { "type": "string", "enum": ["image", "video", "text", "voice"], "description": "Type of status" },
+        "content": { "type": "string", "description": "Content of the status" },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "When the status expires" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the status was created" },
+        "duration": { "type": "number", "description": "Duration in hours" }
+      },
+      "required": ["uid", "displayName", "type", "content", "expiresAt", "createdAt"]
+    },
+    "calls": {
+      "title": "Call",
+      "description": "Video or audio call information",
+      "type": "object",
+      "properties": {
+        "callerId": { "type": "string", "description": "UID of the caller" },
+        "receiverId": { "type": "string", "description": "UID of the receiver" },
+        "type": { "type": "string", "enum": ["audio", "video"], "description": "Type of call" },
+        "status": { "type": "string", "enum": ["ringing", "active", "ended", "missed", "rejected"], "description": "Current status of the call" },
+        "startedAt": { "type": "string", "format": "date-time", "description": "When the call started" },
+        "endedAt": { "type": "string", "format": "date-time", "description": "When the call ended" }
+      },
+      "required": ["callerId", "receiverId", "type", "status", "startedAt"]
+    },
+    "rtsp_feeds": {
+      "title": "RTSP Feed",
+      "description": "Live RTSP camera feed",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the camera/feed" },
+        "url": { "type": "string", "description": "RTSP URL" },
+        "ownerId": { "type": "string", "description": "UID of the owner" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the feed was added" }
+      },
+      "required": ["name", "url", "ownerId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile data"
+    },
+    "/groups/{groupId}": {
+      "schema": "groups",
+      "description": "Group chat data"
+    },
+    "/messages/{messageId}": {
+      "schema": "messages",
+      "description": "Individual chat messages"
+    },
+    "/statuses/{statusId}": {
+      "schema": "statuses",
+      "description": "Ephemeral status updates"
+    },
+    "/calls/{callId}": {
+      "schema": "calls",
+      "description": "Call history and active calls"
+    },
+    "/rtsp_feeds/{feedId}": {
+      "schema": "rtsp_feeds",
+      "description": "RTSP live feeds"
+    }
+  }
+}
