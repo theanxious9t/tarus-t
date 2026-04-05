@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, User } from "firebase/auth";
 import { initializeFirestore, collection, doc, setDoc, getDoc, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -10,32 +10,38 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
+const upsertUserProfile = async (user: User) => {
+  await setDoc(doc(db, "users", user.uid), {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    status: "online",
+    lastSeen: new Timestamp(Math.floor(Date.now() / 1000), 0).toDate().toISOString(),
+    friends: [],
+    friendRequests: [],
+    pinnedChats: [],
+    mutedChats: [],
+    lockedChats: [],
+    starredMessages: [],
+    settings: {
+      showLastSeen: true,
+      showOnlineStatus: true,
+      theme: 'dark'
+    }
+  }, { merge: true });
+};
+
 export const signInWithGoogle = async () => {
+  await signInWithRedirect(auth, googleProvider);
+};
+
+export const completeGoogleRedirectSignIn = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
     const user = result.user;
-    
-    // Create/update user document
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
-      status: "online",
-      lastSeen: new Timestamp(Math.floor(Date.now() / 1000), 0).toDate().toISOString(),
-      friends: [],
-      friendRequests: [],
-      pinnedChats: [],
-      mutedChats: [],
-      lockedChats: [],
-      starredMessages: [],
-      settings: {
-        showLastSeen: true,
-        showOnlineStatus: true,
-        theme: 'dark'
-      }
-    }, { merge: true });
-    
+    await upsertUserProfile(user);
     return user;
   } catch (error) {
     console.error("Error signing in with Google:", error);
