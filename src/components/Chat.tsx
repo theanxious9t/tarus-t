@@ -161,6 +161,7 @@ const Chat: React.FC<ChatProps> = ({
   const [showChatSettings, setShowChatSettings] = useState(false);
   const [showCallSettings, setShowCallSettings] = useState<{show: boolean, type: 'audio'|'video'|'screen_share'}>({show: false, type: 'video'});
   const [isEmergencyMode, setIsEmergencyMode] = useState(false);
+  const [reactingToMessageId, setReactingToMessageId] = useState<string | null>(null);
 
   const isSevered = selectedUser && (
     liveCurrentUser?.blockedUsers?.includes(selectedUser.uid) || 
@@ -319,6 +320,16 @@ const Chat: React.FC<ChatProps> = ({
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   };
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (reactingToMessageId && !(e.target as HTMLElement).closest('.glass-panel')) {
+        setReactingToMessageId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [reactingToMessageId]);
+
   const handleReaction = async (messageId: string, emoji: string) => {
     if (!auth.currentUser) return;
     try {
@@ -377,15 +388,16 @@ const Chat: React.FC<ChatProps> = ({
     if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     
     clickTimeoutRef.current = setTimeout(() => {
-      if (clickCountRef.current === 2) {
+      if (clickCountRef.current === 1) {
+        // Single tap: Reaction
+        setReactingToMessageId(prev => prev === msg.id ? null : msg.id);
+      } else if (clickCountRef.current === 2) {
         // Double tap: Reply
         setReplyingTo(msg);
-      } else if (clickCountRef.current === 3) {
-        // Triple tap: Pin message
-        handlePinMessage(msg.id, !!msg.pinned);
+        setReactingToMessageId(null);
       }
       clickCountRef.current = 0;
-    }, 400); // 400ms window for taps
+    }, 300);
   };
 
   const handleDeleteMessage = async (messageId: string, forEveryone: boolean = true) => {
@@ -1412,12 +1424,40 @@ const Chat: React.FC<ChatProps> = ({
                   )}
                   
                   <div className="group relative">
+                    {reactingToMessageId === msg.id && (
+                      <div className={`absolute bottom-full mb-2 z-50 ${isMe ? "right-0" : "left-0"}`}>
+                        <div className="glass-panel p-2 rounded-2xl flex items-center gap-2 shadow-2xl border border-accent/20">
+                          {['❤️', '👍', '🔥', '😂', '😮', '😢'].map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReaction(msg.id, emoji);
+                                setReactingToMessageId(null);
+                              }}
+                              className="text-xl hover:scale-125 transition-transform p-1"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowEmojiPicker(true);
+                            }}
+                            className="p-1 text-muted hover:text-accent"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div
                       className={`${
                         messageSize === 'small' ? 'p-2 md:p-3 text-[10px] md:text-xs rounded-[16px] md:rounded-[24px]' :
                         messageSize === 'large' ? 'p-4 md:p-7 text-sm md:text-lg rounded-[24px] md:rounded-[40px]' :
                         'p-3 md:p-5 text-xs md:text-sm rounded-[20px] md:rounded-[32px]'
-                      } leading-relaxed relative glass-panel transition-colors duration-500 ${
+                      } leading-relaxed relative glass-panel transition-colors duration-500 break-words whitespace-pre-wrap ${
                         msg.isDeleted 
                           ? "opacity-50 italic"
                           : isMe
@@ -1442,7 +1482,18 @@ const Chat: React.FC<ChatProps> = ({
                       )}
 
                       {msg.replyTo && (
-                        <div className="mb-3 p-3 bg-black/20 rounded-xl border-l-2 border-accent text-xs opacity-80">
+                        <div 
+                          className="mb-3 p-3 bg-black/20 rounded-xl border-l-2 border-accent text-xs opacity-80 cursor-pointer hover:bg-black/30 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const target = document.getElementById(`message-${msg.replyTo?.id}`);
+                            if (target) {
+                              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              target.classList.add('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-bg');
+                              setTimeout(() => target.classList.remove('ring-2', 'ring-accent', 'ring-offset-2', 'ring-offset-bg'), 2000);
+                            }
+                          }}
+                        >
                           <div className="font-bold text-accent mb-1">{msg.replyTo.senderName}</div>
                           <div className="truncate">
                             {msg.replyTo.voiceUrl ? "🎤 Voice Message" : msg.replyTo.fileUrl ? "📎 Attachment" : msg.replyTo.text}
@@ -1552,12 +1603,12 @@ const Chat: React.FC<ChatProps> = ({
                       {(() => {
                         const msgDate = msg.timestamp?.toDate() || new Date();
                         const dateStr = format(msgDate, "EEE do MMM yy").toLowerCase();
-                        const sentTimeStr = format(msgDate, "h:mma").toLowerCase();
+                        const sentTimeStr = format(msgDate, "h:mm:ssa").toLowerCase();
                         let timeDisplay = sentTimeStr;
 
                         if (msg.typingStartedAt) {
                           const typeStart = msg.typingStartedAt.toDate();
-                          const typeStartStr = format(typeStart, "h:mma").toLowerCase();
+                          const typeStartStr = format(typeStart, "h:mm:ssa").toLowerCase();
                           timeDisplay = `${typeStartStr}¹ ${sentTimeStr}²`;
                         }
 
@@ -2456,11 +2507,24 @@ const Chat: React.FC<ChatProps> = ({
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-accent">{msg.senderName}</span>
                         <span className="text-[10px] text-muted">
-                          {format(msg.timestamp?.toDate() || new Date(), "MMM do, h:mma")}
+                          {(() => {
+                            const msgDate = msg.timestamp?.toDate() || new Date();
+                            const dateStr = format(msgDate, "EEE do MMM yy").toLowerCase();
+                            const sentTimeStr = format(msgDate, "h:mm:ssa").toLowerCase();
+                            let timeDisplay = sentTimeStr;
+
+                            if (msg.typingStartedAt) {
+                              const typeStart = msg.typingStartedAt.toDate();
+                              const typeStartStr = format(typeStart, "h:mm:ssa").toLowerCase();
+                              timeDisplay = `${typeStartStr}¹ ${sentTimeStr}²`;
+                            }
+
+                            return `[${dateStr} ${timeDisplay}]`;
+                          })()}
                         </span>
                       </div>
-                      <div className="text-sm line-clamp-3">
-                        {decryptedMessages[msg.id] || msg.text}
+                      <div className="text-sm line-clamp-3 opacity-60">
+                        {msg.text}
                       </div>
                     </div>
                   ))
