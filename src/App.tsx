@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { auth, db, handleFirestoreError, OperationType } from "./lib/firebase";
+import { auth, db, handleFirestoreError, OperationType, syncCurrentUserProfile } from "./lib/firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { doc, onSnapshot, setDoc, serverTimestamp, Timestamp, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, collection, where, getDocs } from "firebase/firestore";
 import socket from "./lib/socket";
@@ -72,6 +72,8 @@ export default function App() {
       setUser(currentUser);
       
       if (currentUser) {
+        await syncCurrentUserProfile();
+
         // Listen to user data
         const userRef = doc(db, "users", currentUser.uid);
         const unsubUser = onSnapshot(userRef, (doc) => {

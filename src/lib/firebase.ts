@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence, signInWithPopup, User } from "firebase/auth";
 import { initializeFirestore, collection, doc, setDoc, getDoc, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, Timestamp, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -10,36 +10,77 @@ export const db = initializeFirestore(app, {
 }, firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
+const upsertUserProfile = async (user: User) => {
+  await setDoc(doc(db, "users", user.uid), {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+    status: "online",
+    lastSeen: new Timestamp(Math.floor(Date.now() / 1000), 0).toDate().toISOString(),
+    friends: [],
+    friendRequests: [],
+    pinnedChats: [],
+    mutedChats: [],
+    lockedChats: [],
+    starredMessages: [],
+    settings: {
+      showLastSeen: true,
+      showOnlineStatus: true,
+      theme: 'dark'
+    }
+  }, { merge: true });
+};
+
+const shouldFallbackToRedirect = (error: unknown) => {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  const code = String((error as { code?: string }).code || "");
+  return (
+    code === "auth/popup-blocked" ||
+    code === "auth/operation-not-supported-in-this-environment"
+  );
+};
+
 export const signInWithGoogle = async () => {
+  await setPersistence(auth, browserLocalPersistence);
+
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    await upsertUserProfile(result.user);
+    return "popup" as const;
+  } catch (error) {
+    if (!shouldFallbackToRedirect(error)) {
+      console.error("Google popup sign-in failed:", error);
+      return null;
+    }
+
+    await signInWithRedirect(auth, googleProvider);
+    return "redirect" as const;
+  }
+};
+
+export const completeGoogleRedirectSignIn = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
     const user = result.user;
-    
-    // Create/update user document
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
-      status: "online",
-      lastSeen: new Timestamp(Math.floor(Date.now() / 1000), 0).toDate().toISOString(),
-      friends: [],
-      friendRequests: [],
-      pinnedChats: [],
-      mutedChats: [],
-      lockedChats: [],
-      starredMessages: [],
-      settings: {
-        showLastSeen: true,
-        showOnlineStatus: true,
-        theme: 'dark'
-      }
-    }, { merge: true });
-    
+    await upsertUserProfile(user);
     return user;
   } catch (error) {
     console.error("Error signing in with Google:", error);
-    throw error;
+    return null;
+  }
+};
+
+export const syncCurrentUserProfile = async () => {
+  if (!auth.currentUser) return null;
+
+  try {
+    await upsertUserProfile(auth.currentUser);
+    return auth.currentUser;
+  } catch (error) {
+    console.error("Failed to sync current user profile:", error);
+    return null;
   }
 };
 

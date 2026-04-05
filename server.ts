@@ -35,7 +35,7 @@ async function startServer() {
     },
   });
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Socket.IO state
   const users = new Map<string, string>(); // socketId -> userId

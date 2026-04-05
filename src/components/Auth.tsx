@@ -1,15 +1,43 @@
-import React from "react";
-import { signInWithGoogle } from "../lib/firebase";
+import React, { useEffect, useState } from "react";
+import { completeGoogleRedirectSignIn, signInWithGoogle } from "../lib/firebase";
 import { motion } from "motion/react";
 import { LogIn, ArrowRight } from "lucide-react";
 import { ScrambleText } from "./ScrambleText";
 
 const Auth: React.FC = () => {
+  const [isRedirectProcessing, setIsRedirectProcessing] = useState(true);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    completeGoogleRedirectSignIn()
+      .catch((error) => {
+        console.error("Redirect login failed:", error);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsRedirectProcessing(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const handleLogin = async () => {
+    if (isSigningIn || isRedirectProcessing) return;
+    setIsSigningIn(true);
     try {
-      await signInWithGoogle();
+      const method = await signInWithGoogle();
+      if (method === "redirect") {
+        setIsRedirectProcessing(true);
+      }
     } catch (error) {
       console.error("Login failed:", error);
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -54,11 +82,12 @@ const Auth: React.FC = () => {
             
             <button
               onClick={handleLogin}
+              disabled={isRedirectProcessing || isSigningIn}
               className="luxury-button w-full flex items-center justify-between group/btn relative z-10 overflow-hidden"
             >
               <span className="flex items-center gap-3">
                 <LogIn className="w-4 h-4" />
-                Sign in with Google
+                {isRedirectProcessing ? "Checking sign-in..." : isSigningIn ? "Signing in..." : "Sign in with Google"}
               </span>
               <ArrowRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform" />
             </button>
